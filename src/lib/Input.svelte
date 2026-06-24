@@ -8,7 +8,7 @@
 		options?: { label: string; value: string }[];
 		placeholder?: string;
 		required?: boolean;
-		Inputstate?: 'disabled' | 'readonly' | 'loading' | '';
+		inputState?: 'disabled' | 'readonly' | 'loading' | '';
 		icon?: string;
 		iconPlacement?: 'start' | 'end';
 		className?: string;
@@ -23,7 +23,7 @@
 		options = [],
 		placeholder = '',
 		required = false,
-		Inputstate = '',
+		inputState = '',
 		icon = '',
 		iconPlacement = 'end',
 		className = '',
@@ -31,33 +31,26 @@
 	}: Options = $props();
 	let error = $state('');
 	const inputId = crypto.randomUUID();
-	const sizes = {
-		xs: '24px',
-		sm: '32px',
-		md: '36px',
-		lg: '48px',
-		xl: '56px'
-	};
-	function validate(val: string | string[]) {
-		if (required) {
-			if (!value || (Array.isArray(value) && value.length === 0)) {
-				error = 'Cannot be empty!';
-				return false;
-			}
+    const isDisabled = $derived(inputState === 'disabled' || inputState === 'loading');
+	const validate = (val: string | string[]) => {
+        const isEmpty = Array.isArray(val) ? val.length === 0 : val.trim().length === 0;
+		if (required && isEmpty) {
+			error = 'Cannot be empty!';
+			return false;
 		}
 		error = '';
 		return true;
-	}
-	function handleInput(event: Event) {
+	};
+	const handleInput = (event: Event) => {
 		const target = event.target as HTMLInputElement|HTMLSelectElement;
 		let newValue: string | string[] = target.value;
 		if (type === 'multi' && target instanceof HTMLSelectElement) {
-			newValue = Array.from(target.selectedOptions).map(o => o.value);
+			newValue = Array.from(target.selectedOptions).map((option) => option.value);
 		}
         value = newValue;
         validate(newValue);
         if (onChange) onChange(newValue);
-	}
+	};
 </script>
 
 <div class="input-container-block">
@@ -69,23 +62,25 @@
             </label>
         {/if}
         
-        <div class={`input-wrapper ${Inputstate}`} style={`height: ${sizes[size]};`}>
-            {#if icon && iconPlacement === 'start' && Inputstate !== 'loading'}
+        <div class={`input-wrapper ${inputState} size-${size}`}
+             class:has-start-icon={icon && iconPlacement === 'start'}
+             class:has-end-icon={icon && iconPlacement === 'end'}>
+            {#if icon && iconPlacement === 'start' && inputState !== 'loading'}
                 <span class="icon start-icon">{icon}</span>
             {/if}
-            {#if Inputstate === 'loading' && iconPlacement === 'start'}
+            {#if inputState === 'loading' && iconPlacement === 'start'}
                 <span class="spinner-icon">⏳</span>
             {/if}
 
             {#if type === 'select'}
-                <select id={inputId} value={value as string} onchange={handleInput} disabled={Inputstate === 'disabled' || Inputstate === 'loading'}>
-                    <option value="" disabled selected>{placeholder || 'Select an option'}</option>
+                <select id={inputId} value={value as string} onchange={handleInput} disabled={isDisabled}>
+                    <option value="" disabled>{placeholder || 'Select an option'}</option>
                     {#each options as option}
                         <option value={option.value}>{option.label}</option>
                     {/each}
                 </select>
             {:else if type === 'multi'}
-                <select id={inputId} multiple value={value as string[]} onchange={handleInput} disabled={Inputstate === 'disabled' || Inputstate === 'loading'}>
+                <select id={inputId} multiple value={value as string[]} onchange={handleInput} disabled={isDisabled}>
                     {#each options as option}
                         <option value={option.value}>{option.label}</option>
                     {/each}
@@ -97,23 +92,24 @@
                     value={value as string}
                     oninput={handleInput}
                     {placeholder}
-                    disabled={Inputstate === 'disabled' || Inputstate === 'loading'}
-                    readonly={Inputstate === 'readonly'}
-                    style={icon ? (iconPlacement === 'start' ? 'padding-left: 36px;' : 'padding-right: 36px;') : ''}
+                    disabled={isDisabled}
+                    readonly={inputState === 'readonly'}
+                    class:start-icon-padding={icon && iconPlacement === 'start'}
+                    class:end-icon-padding={icon && iconPlacement === 'end'}
                 />
             {/if}
 
-            {#if icon && iconPlacement === 'end' && Inputstate !== 'loading'}
+            {#if icon && iconPlacement === 'end' && inputState !== 'loading'}
                 <span class="icon end-icon">{icon}</span>
             {/if}
-            {#if Inputstate === 'loading' && iconPlacement === 'end'}
+            {#if inputState === 'loading' && iconPlacement === 'end'}
                 <span class="spinner-icon">⏳</span>
             {/if}
         </div>
     </div>
 
     {#if error}
-        <p class="error-text" style={labelPlacement === 'row' ? 'margin-left: 108px;' : ''}>
+        <p class:error-row={labelPlacement === 'row'} class="error-text">
             {error}
         </p>
     {/if}
@@ -211,12 +207,12 @@
         align-items: center;
     }
 
-    .start-icon {
-        left: 12px;
+    .start-icon-padding {
+        padding-left: 36px;
     }
 
-    .end-icon {
-        right: 12px;
+    .end-icon-padding {
+        padding-right: 36px;
     }
 
     .spinner-icon {
@@ -227,8 +223,13 @@
         animation: spin 1s infinite linear;
     }
     
-    .input-wrapper:has(.start-icon) .spinner-icon { left: 12px; }
-    .input-wrapper:has(.end-icon) .spinner-icon { right: 12px; }
+    .has-start-icon .spinner-icon {
+        left: 12px;
+    }
+
+    .has-end-icon .spinner-icon {
+        right: 12px;
+    }
 
     @keyframes spin {
         from { transform: translateY(-50%) rotate(0deg); }
@@ -241,5 +242,28 @@
         margin-top: 4px;
         margin-bottom: 0;
         font-weight: 500;
+    }
+
+    .size-xs {
+        height: 24px;
+    }
+
+    .size-sm {
+        height: 32px;
+    }
+
+    .size-md {
+        height: 36px;
+    }
+
+    .size-lg {
+        height: 48px;
+    }
+
+    .size-xl {
+        height: 56px;
+    }
+    .error-row {
+        margin-left: 108px;
     }
 </style>

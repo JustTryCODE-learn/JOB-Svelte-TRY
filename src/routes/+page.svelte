@@ -6,9 +6,19 @@
 
 	let username = $state('');
 	let accountType = $state('');
-	let techStack = $state([]);
-
-	let selectedVariant = $state<'primary' | 'danger' | 'success' | 'warning'>('primary');
+	let techStack = $state<string[]>([]);
+	type ButtonVariant =
+        | 'primary'
+        | 'secondary'
+        | 'success'
+        | 'danger'
+        | 'warning'
+        | 'info'
+        | 'surface'
+        | 'light'
+        | 'dark'
+        | 'transparent';
+    let selectedVariant = $state<ButtonVariant>('primary');
 	let isOutline = $state(false);
 	let currentFormState = $state<'default' | 'loading' | 'disabled'>('default');
 
@@ -21,16 +31,21 @@
 	const tableColumns = [
 		{ key: 'name', label: 'Username', width: '200px' },
 		{ key: 'accountType', label: 'Account Type', width: '150px' },
-		{ key: 'techStack', label: 'Tech Stack', width: '250px' }
+		{ key: 'techStack', label: 'Tech Stack', width: '250px' },
+        { key: 'accountState', label: 'Account State', width: '150px' }
 	];
 
-	let tableData = $state<Array<{ id: string; name: string; accountType: string; techStack: string }>>([]);
+	let tableData = $state<Array<{ id: string; name: string; accountType: string; techStack: string; accountState: string }>>([]);
 
 	let paginatedTableData = $derived(tableData.slice(
 		(tableCurrentPage - 1) * tablePageSize,
 		tableCurrentPage * tablePageSize
 	));
+
+    let selectedUsernames = $derived(tableData.filter(row => tableSelectedIds.includes(row.id)).map(row => row.name));
 	
+    let pendingAccount : { id: string; name: string; accountType: string; techStack: string; accountState: string} | null = null;
+
 	const typeOptions = [
 		{label: 'Personal', value: 'personal'},
 		{label: 'Business', value: 'business'}
@@ -47,26 +62,34 @@
 			alert('Please enter a username');
 			return;
 		}
+        if (!accountType) {
+            alert('Please select an account type');
+            return;
+        }
 		currentFormState = 'loading';
 		setTimeout(() => {
 			currentFormState = 'default';
-			const newAccount = {
+			pendingAccount = {
 				id: String(Date.now()), 
 				name: username,
 				accountType: accountType || 'Not selected',
-				techStack: techStack.length > 0 ? techStack.join(', ') : 'Not selected'
+				techStack: techStack.length > 0 ? techStack.join(', ') : 'Not selected',
+                accountState: selectedVariant
 			};
-			
-			tableData = [...tableData, newAccount];
 			isModalOpen = true;
 		}, 2000);
 	}
 
 	function handleModalConfirm() {
-		console.log('Modal confirmed with username:', username);
+        if (pendingAccount) {
+            tableData = [...tableData, pendingAccount];
+            pendingAccount = null;
+        }
+		console.log('Modal confirmed:', pendingAccount);
 	}
 
 	function handleModalCancel() {
+        pendingAccount = null;
 		console.log('Modal cancelled');
 	}
 
@@ -101,8 +124,8 @@
 </script>
 
 <main class="test-page">
-    <h2>🧪 DEMO / Test Component: Input & Button & Modal</h2>
-    <p class="subtitle">This is a demo of the Input and Button and Modal components working interactively.</p>
+    <h2>🧪 DEMO / Test Component: Input-Button-Modal-Table</h2>
+    <p class="subtitle">This is a demo of the Input and Button and Modal and Table components working interactively.</p>
 
     <div class="demo-layout">
     
@@ -139,12 +162,12 @@
 
         <div class="card modifiers-section">
             <h3>2. Button Modifiers</h3>
-            <div class="modifier-row"> <label for="variant-select">Color (Variant):</label>
+            <div class="modifier-row"> <label for="variant-select">Account State:</label>
                 <select id="variant-select" bind:value={selectedVariant}>
                     <option value="primary">Primary</option>
-                    <option value="danger">Danger (Red)</option>
-                    <option value="success">Success (Green)</option>
-                    <option value="warning">Warning (Yellow)</option>
+                    <option value="danger">Danger</option>
+                    <option value="success">Success</option>
+                    <option value="warning">Warning</option>
                 </select>
             </div>
             <div class="modifier-row"> <label>
@@ -152,7 +175,7 @@
                     Outline Style (transparent border)
                 </label>
             </div>
-            <div class="modifier-row"> <label for="state-select">Form State (State):</label>
+            <div class="modifier-row"> <label for="state-select">Form State:</label>
                 <select id="state-select" bind:value={currentFormState}>
                     <option value="default">Default</option>
                     <option value="disabled">Disabled</option>
@@ -170,7 +193,7 @@
                 type="submit"
                 variant={selectedVariant}
                 outline={isOutline}
-                Inputstate={currentFormState}
+                inputState={currentFormState}
                 size="lg"
                 rounded="md"
                 onClick={handleFormSubmit}
@@ -185,16 +208,36 @@
 
         <div class="data-log">
             <strong>Current Form Values:</strong>
-            <pre>Username: "{username}" | Type: "{accountType}" | Stack: {JSON.stringify(techStack)}</pre>
+            <pre>Username: "{username}" | Type: "{accountType}" | Stack: {JSON.stringify(techStack)} | State: "{selectedVariant}"</pre>
         </div>
     </div>
+
+    <Modal 
+        bind:isOpen={isModalOpen}
+        title="Account Created Successfully! 🎉"
+        size="md"
+        onConfirm={handleModalConfirm}
+        onCancel={handleModalCancel}
+    >
+        <div class="modal-content">
+            <p><strong>Welcome, {username || 'New User'}!</strong></p>
+            <p>Your account has been created successfully.</p>
+            <ul>
+                <li><strong>Username:</strong> {username}</li>
+                <li><strong>Account Type:</strong> {accountType || 'Not selected'}</li>
+                <li><strong>Tech Stack:</strong> {techStack.length > 0 ? techStack.join(', ') : 'Not selected'}</li>
+                <li><strong>Account State:</strong> {selectedVariant}</li>
+            </ul>
+            <p>Choose "Confirm" to have the ability to use the platform!</p>
+        </div>
+    </Modal>
 
     <div class="card table-section" style="margin-top: 24px;">
         <h3>4. Table Component Demo</h3>
         <Table
             columns={tableColumns}
             data={paginatedTableData}
-            totalItems={paginatedTableData.length}
+            totalItems={tableData.length}
             currentPage={tableCurrentPage}
             pageSize={tablePageSize}
             selectedIds={tableSelectedIds}
@@ -205,29 +248,10 @@
             onSelectRow={handleTableSelectRow}
         />
         <div class="table-info" style="margin-top: 16px;">
-            <strong>Selected Rows:</strong> {tableSelectedIds.length > 0 ? tableSelectedIds.join(', ') : 'None'}
+            <strong>Selected Username(s):</strong> {selectedUsernames.length > 0 ? selectedUsernames.join(', ') : 'None'}
         </div>
     </div>
 </main>
-
-<Modal 
-    bind:isOpen={isModalOpen}
-    title="Account Created Successfully! 🎉"
-    size="md"
-    onConfirm={handleModalConfirm}
-    onCancel={handleModalCancel}
->
-    <div class="modal-content">
-        <p><strong>Welcome, {username || 'New User'}!</strong></p>
-        <p>Your account has been created successfully.</p>
-        <ul>
-            <li><strong>Username:</strong> {username}</li>
-            <li><strong>Account Type:</strong> {accountType || 'Not selected'}</li>
-            <li><strong>Tech Stack:</strong> {techStack.length > 0 ? techStack.join(', ') : 'Not selected'}</li>
-        </ul>
-        <p>You can now start exploring the platform!</p>
-    </div>
-</Modal>
 
 <style is:global>
     .modal-content {

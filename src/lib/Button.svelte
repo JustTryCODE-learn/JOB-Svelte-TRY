@@ -4,18 +4,18 @@
 	type Options = {
 		outline?: boolean;
 		className?: string;
-		Inputstate?: 'loading'|'disabled'|'default';
-		type: 'submit' | 'reset' | 'button';
+		inputState?: 'loading'|'disabled'|'default';
+		type?: 'submit' | 'reset' | 'button';
 		rounded?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
-		size: '2xs' |'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
-		variant: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info' | 'surface' | 'light' | 'dark' | 'transparent';
+		size?: '2xs' |'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+		variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info' | 'surface' | 'light' | 'dark' | 'transparent';
 		children?: Snippet;
 		onClick?: (event: MouseEvent) => void;
 	}; 
 	let {
 		outline = false,
 		className = '',
-		Inputstate = 'default',
+		inputState = 'default',
 		type = 'button',
 		rounded = 'md',
 		size = 'md',
@@ -23,55 +23,31 @@
 		children,
 		onClick
 	}: Options = $props();
-	const Paddingsizes = {
-		'2xs': '4px 8px',
-		xs: '6px 12px',
-        sm: '8px 14px',
-        md: '10px 18px',
-        lg: '12px 22px',
-        xl: '14px 26px',
-        '2xl': '16px 32px',
-        full: '12px'
-	};
-	const Fontsizes = {
-		'2xs': '11px',
-        xs: '12px',
-        sm: '13px',
-        md: '14px',
-        lg: '16px',
-        xl: '18px',
-        '2xl': '20px',
-        full: '16px'
-	};
 	let isClicking = $state(false);
-	function handleClick(event: MouseEvent) {
-        if (Inputstate === 'disabled' || Inputstate === 'loading' || isClicking) {
+	const isDisabled = $derived(inputState === 'disabled' || inputState === 'loading');
+	const handleClick = (event: MouseEvent) => {
+        if (isDisabled || isClicking) {
             event.preventDefault();
             return;
         }
-        if (onClick) onClick(event);
+        onClick?.(event);
 
         isClicking = true;
         setTimeout(() => {
 			isClicking = false;
 		}, 400);
-	}
+	};
 </script>
 
 <button
 	{type}
-	class={`btn variant-${variant} rounded-${rounded} ${Inputstate} ${className}`}
+	class={`btn variant-${variant} rounded-${rounded} size-${size} ${inputState} ${className}`}
 	class:is-outline={outline}
-	style={`
-		padding: ${Paddingsizes[size] || '10px 18px'};
-		font-size: ${Fontsizes[size] || '14px'};
-		width: ${size === 'full' ? '100%' : 'auto'};
-	`}
-	disabled={Inputstate === 'disabled' || Inputstate === 'loading'}
+	disabled={isDisabled}
 	onclick={handleClick}
 >
-	{#if Inputstate === 'loading'} 
-		<span class="spinner-icon">⏳</span>
+	{#if inputState === 'loading'} 
+		<span class="spinner" aria-hidden="true">⏳</span>
 	{/if}
 	{#if children}
 		{@render children()}
@@ -114,8 +90,8 @@
 		opacity: 0.8;
 		transform: translateY(-1px);
 	}
-	.btn:active:not(::after) {
-		transform: trnaslateY(1px)();
+	.btn:active:not(:disabled) {
+		transform: translateY(1px);
 	}
 	.is-outline {
 		background-color: transparent !important;
@@ -157,4 +133,44 @@
         0%   { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+	.size-2xs {
+		padding: 4px 8px;
+		font-size: 11px;
+	}
+
+	.size-xs {
+		padding: 6px 12px;
+		font-size: 12px;
+	}
+
+	.size-sm {
+		padding: 8px 14px;
+		font-size: 13px;
+	}
+
+	.size-md {
+		padding: 10px 18px;
+		font-size: 14px;
+	}
+
+	.size-lg {
+		padding: 12px 20px;
+		font-size: 15px;
+	}
+
+	.size-xl {
+		padding: 14px 22px;
+		font-size: 16px;
+	}
+
+	.size-2xl {
+		padding: 16px 24px;
+		font-size: 17px;
+	}
+
+	.size-full {
+		width: 100%;
+		padding: 12px;
+		font-size: 16px;
+	}
 </style>

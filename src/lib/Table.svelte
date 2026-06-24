@@ -7,6 +7,11 @@
         width?: string;
     };
 
+    type TableRow = {
+        id: string;
+        [key: string]: unknown;
+    };
+
     type Options = {
         selectedIds?: string[];
         isChecked?: boolean;
@@ -14,11 +19,11 @@
         totalItems?: number;
         currentPage?: number;
         columns?: TableColumn[];
-        data?: Record<string, any>[];
-        onPaging: (page: number) => void;
-        onPageSizeChange: (size: number) => void;
-        onSelectAll: () => void;
-        onSelectRow: (id: string) => void;
+        data?: TableRow[];
+        onPaging?: (page: number) => void;
+        onPageSizeChange?: (size: number) => void;
+        onSelectAll?: () => void;
+        onSelectRow?: (id: string) => void;
     };
     let {
         selectedIds = [],
@@ -34,37 +39,18 @@
         onSelectRow
     }: Options = $props();
 
-    let TotalPage = $derived(Math.ceil(totalItems / pageSize) || 1);
+    let totalPages = $derived(Math.ceil(totalItems / pageSize) || 1);
     let isAllChecked = $derived(data.length > 0 && data.every(row => selectedIds.includes(row.id)));
 
     function handleSelectAllChange() {
-        if (onSelectAll) {
-            onSelectAll();
-        } else {
-            if (isAllChecked) {
-                const currentIds = data.map(item => item.id);
-                selectedIds = selectedIds.filter(id => !currentIds.includes(id));
-            } else {
-                const currentIds = data.map(item => item.id);
-                selectedIds = [...new Set([...selectedIds, ...currentIds])];
-            }
-        }
+        onSelectAll?.();
     }
+
     function handleRowSelectChange(id: string) {
-        if (onSelectRow) {
-            onSelectRow(id);
-        } else {
-            if (isChecked) {
-                if (selectedIds.includes(id)) {
-                    selectedIds = selectedIds.filter(item => item !== id);
-                } else {
-                    selectedIds = [...selectedIds, id];
-                }
-            }
-        }
+        onSelectRow?.(id);
     }
     function changePage(newPage: number) {
-        if (newPage >= 1 && newPage <= TotalPage && onPaging) {
+        if (newPage >= 1 && newPage <= totalPages && onPaging) {
             onPaging(newPage);
         }
     }
@@ -82,8 +68,13 @@
             <thead>
                 <tr>
                     {#if isChecked} 
-                        <th class="checbox-col">
-                            <input type="checkbox" checked={isAllChecked} onchange={handleSelectAllChange}/>
+                        <th class="checkbox-col">
+                            <input
+                                type="checkbox"
+                                aria-label="Select all rows"
+                                checked={isAllChecked}
+                                onchange={handleSelectAllChange}
+                            />
                         </th>
                     {/if}
                     {#each columns as column}
@@ -107,11 +98,16 @@
                         <tr class:row-selected={selectedIds.includes(row.id)}>
                             {#if isChecked}
                                 <td class="checkbox-col">
-                                    <input type="checkbox" checked={selectedIds.includes(row.id)} onchange={() => handleRowSelectChange(row.id)}/>
+                                    <input
+                                        type="checkbox"
+                                        aria-label={`Select row ${row.id}`}
+                                        checked={selectedIds.includes(row.id)}
+                                        onchange={() => handleRowSelectChange(row.id)}
+                                    />
                                 </td>
                             {/if}
                             {#each columns as column}
-                                <td>{row[column.key] != undefined ? row[column.key] : ''}</td>
+                                <td>{row[column.key] ?? ''}</td>
                             {/each}
                         </tr>
                     {/each}
@@ -126,10 +122,10 @@
             <select class="size-select" value={pageSize} onchange={handleSizeChange}>
                 <option value={5}>5</option>
                 <option value={10}>10</option>
-                <option value={20}>20</option>
+                <option value={25}>25</option>
                 <option value={50}>50</option>
             </select>
-            <span class="current-page">Page: {currentPage} of {TotalPage}</span>
+            <span class="current-page">Page: {currentPage} of {totalPages}</span>
         </div>
         <div class="pagination-controls">
             <Button 
@@ -137,14 +133,14 @@
                 variant="light" 
                 size="sm" 
                 rounded="md" 
-                Inputstate={currentPage === 1 ? 'disabled' : 'default'}
+                inputState={currentPage === 1 ? 'disabled' : 'default'}
                 onClick={() => changePage(currentPage - 1)}
             >
                 ◀ Previous
             </Button>
 
             <span class="page-indicator">
-                {currentPage} of {TotalPage}
+                {currentPage} of {totalPages}
             </span>
 
             <Button 
@@ -152,7 +148,7 @@
                 variant="light" 
                 size="sm" 
                 rounded="md" 
-                Inputstate={currentPage === TotalPage ? 'disabled' : 'default'}
+                inputState={currentPage === totalPages ? 'disabled' : 'default'}
                 onClick={() => changePage(currentPage + 1)}
             >
                 Next ▶
