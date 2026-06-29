@@ -13,6 +13,7 @@
 		iconPlacement?: 'start' | 'end';
 		className?: string;
 		size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
+        err?: string;
 	};
 	let {
 		type = 'text',
@@ -27,7 +28,8 @@
 		icon = '',
 		iconPlacement = 'end',
 		className = '',
-		size = 'md'
+		size = 'md',
+        err = ''
 	}: Options = $props();
 	let error = $state('');
 	const inputId = crypto.randomUUID();
@@ -242,6 +244,12 @@
         margin-top: 4px;
         margin-bottom: 0;
         font-weight: 500;
+    }
+
+    .input-error {
+        color: #dc2626;
+        font-size: 12px;
+        margin-top: 4px;
     }
 
     .size-xs {

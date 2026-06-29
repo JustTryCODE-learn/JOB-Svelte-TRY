@@ -3,10 +3,19 @@
 	import Button from '$lib/Button.svelte';
 	import Modal from '$lib/Modal.svelte';
 	import Table from '$lib/Table.svelte';
+    import Forms from '$lib/Forms.svelte';
 
-	let username = $state('');
-	let accountType = $state('');
-	let techStack = $state<string[]>([]);
+	let form = $state({
+        username: "",
+        accountType: "",
+        techStack: [] as string[]
+    });
+    let errors = $state({
+        username: "",
+        accountType: "",
+        techStack: ""
+    });
+
 	type ButtonVariant =
         | 'primary'
         | 'secondary'
@@ -58,22 +67,15 @@
 	];
 
 	function handleFormSubmit() {
-		if (!username) {
-			alert('Please enter a username');
-			return;
-		}
-        if (!accountType) {
-            alert('Please select an account type');
-            return;
-        }
-		currentFormState = 'loading';
+		if (!validateForm()) return;
+        currentFormState = 'loading';
 		setTimeout(() => {
 			currentFormState = 'default';
 			pendingAccount = {
 				id: String(Date.now()), 
-				name: username,
-				accountType: accountType || 'Not selected',
-				techStack: techStack.length > 0 ? techStack.join(', ') : 'Not selected',
+				name: form.username,
+				accountType: form.accountType,
+				techStack: form.techStack.join(', '),
                 accountState: selectedVariant
 			};
 			isModalOpen = true;
@@ -81,6 +83,16 @@
 	}
 
 	function handleModalConfirm() {
+        form = {
+            username: "",
+            accountType: "",
+            techStack: []
+        };
+        errors = {
+            username: "",
+            accountType: "",
+            techStack: ""
+        };
         if (pendingAccount) {
             tableData = [...tableData, pendingAccount];
             pendingAccount = null;
@@ -121,6 +133,28 @@
 			tableSelectedIds = [...tableSelectedIds, id];
 		}
 	}
+
+    function validateForm() {
+        errors = {
+            username: "",
+            accountType: "",
+            techStack: ""
+        };
+        let valid = true;
+        if (!form.username.trim()) {
+            errors.username = "Username is required";
+            valid = false;
+        }
+        if (!form.accountType) {
+            errors.accountType = "Account type is required";
+            valid = false;
+        }
+        if (form.techStack.length === 0) {
+            errors.techStack = "Tech stack is required";
+            valid = false;
+        }
+        return valid;
+    }
 </script>
 
 <main class="test-page">
@@ -131,33 +165,32 @@
     
         <div class="card input-section">
             <h3>1. Input Component</h3>
-            <Input 
-                type="text"
-                label="Username"
-                required={true}
-                placeholder="Enter your username"
-                icon="👤"
-                iconPlacement="start"
-                bind:value={username}
-                labelPlacement="column"
-            />
-            <Input 
-                type="select"
-                label="Account Type"
-                required={true}
-                placeholder="Select an account type"
-                options={typeOptions}
-                bind:value={accountType}
-                labelPlacement="column"
-            />
-            <Input 
-                type="multi"
-                label="Tech Stack"
-                required={true}
-                options={techOptions}
-                bind:value={techStack}
-                labelPlacement="column"
-            />
+            <Forms title="Account Registration Form" onSubmit={handleFormSubmit}>
+                {#snippet children()}
+                    <Input 
+                        label="Username"
+                        bind:value={form.username}
+                        err={errors.username}
+                    />
+                    <Input 
+                        type="select"
+                        bind:value={form.accountType}
+                        options={typeOptions}
+                        err={errors.accountType}
+                    />
+                    <Input 
+                        type="multi"
+                        bind:value={form.techStack}
+                        options={techOptions}
+                        err={errors.techStack}
+                    />
+                    <Button
+                        variant={selectedVariant}
+                        outline={isOutline}
+                        type="submit"
+                    > Submit Form </Button>
+                {/snippet}
+            </Forms>
         </div>
 
         <div class="card modifiers-section">
@@ -201,14 +234,14 @@
                 {#if currentFormState === 'loading'}
                     Processing...
                 {:else}
-                    Submit form for: {username || '(Empty Username)'} 🚀
+                    Submit form for: {form.username || '(Empty Username)'} 🚀
                 {/if}
             </Button>
         </div>
 
         <div class="data-log">
             <strong>Current Form Values:</strong>
-            <pre>Username: "{username}" | Type: "{accountType}" | Stack: {JSON.stringify(techStack)} | State: "{selectedVariant}"</pre>
+            <pre>Username: "{form.username}" | Type: "{form.accountType}" | Stack: {JSON.stringify(form.techStack)} | State: "{selectedVariant}"</pre>
         </div>
     </div>
 
@@ -220,12 +253,12 @@
         onCancel={handleModalCancel}
     >
         <div class="modal-content">
-            <p><strong>Welcome, {username || 'New User'}!</strong></p>
+            <p><strong>Welcome, {form.username || 'New User'}!</strong></p>
             <p>Your account has been created successfully.</p>
             <ul>
-                <li><strong>Username:</strong> {username}</li>
-                <li><strong>Account Type:</strong> {accountType || 'Not selected'}</li>
-                <li><strong>Tech Stack:</strong> {techStack.length > 0 ? techStack.join(', ') : 'Not selected'}</li>
+                <li><strong>Username:</strong> {form.username}</li>
+                <li><strong>Account Type:</strong> {form.accountType || 'Not selected'}</li>
+                <li><strong>Tech Stack:</strong> {form.techStack.length > 0 ? form.techStack.join(', ') : 'Not selected'}</li>
                 <li><strong>Account State:</strong> {selectedVariant}</li>
             </ul>
             <p>Choose "Confirm" to have the ability to use the platform!</p>
