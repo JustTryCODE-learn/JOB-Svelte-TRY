@@ -11,6 +11,7 @@
 		variant?: 'primary' | 'secondary' | 'success' | 'danger' | 'warning' | 'info' | 'surface' | 'light' | 'dark' | 'transparent';
 		children?: Snippet;
 		onClick?: (event: MouseEvent) => void;
+		disabled?: boolean;
 	}; 
 	let {
 		outline = false,
@@ -21,7 +22,8 @@
 		size = 'md',
 		variant = 'primary',
 		children,
-		onClick
+		onClick,
+		disabled = false
 	}: Options = $props();
 	let isClicking = $state(false);
 	const isDisabled = $derived(inputState === 'disabled' || inputState === 'loading');
@@ -172,5 +174,9 @@
 		width: 100%;
 		padding: 12px;
 		font-size: 16px;
+	}
+	button:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>

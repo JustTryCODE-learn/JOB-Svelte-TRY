@@ -4,17 +4,12 @@
         onSubmit?: (event: SubmitEvent) => void;
         children?: any;
     };
-
     let {
         title = "Form Component",
         onSubmit = () => {},
         children
     }: Props = $props();
 
-    function submit(event: SubmitEvent) {
-        event.preventDefault();
-        onSubmit(event);
-    }
 </script>
 
 <div class="form-card">
@@ -32,12 +27,10 @@
         margin-top: 20px;
         background: #f8faff;
     }
-
     .form-card h2 {
         margin-bottom: 16px;
         color: #4f46e5;
     }
-
     form {
         display: flex;
         flex-direction: column;

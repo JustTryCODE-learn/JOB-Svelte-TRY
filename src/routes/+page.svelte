@@ -8,7 +8,7 @@
 	let form = $state({
         username: "",
         accountType: "",
-        techStack: [] as string[]
+        techStack: ""
     });
     let errors = $state({
         username: "",
@@ -66,6 +66,13 @@
 		{label: 'Vue', value: 'vue'}
 	];
 
+    const isSubmitDisabled = $derived(
+        errors.username !== "" ||
+        !form.username.trim() ||
+        !form.accountType ||
+        form.techStack.length === 0
+    );
+
 	function handleFormSubmit() {
 		if (!validateForm()) return;
         currentFormState = 'loading';
@@ -75,7 +82,7 @@
 				id: String(Date.now()), 
 				name: form.username,
 				accountType: form.accountType,
-				techStack: form.techStack.join(', '),
+				techStack: form.techStack,
                 accountState: selectedVariant
 			};
 			isModalOpen = true;
@@ -86,7 +93,7 @@
         form = {
             username: "",
             accountType: "",
-            techStack: []
+            techStack: ""
         };
         errors = {
             username: "",
@@ -112,7 +119,7 @@
 
 	function handleTablePageSizeChange(size: number) {
 		tablePageSize = size;
-		tableCurrentPage = 1; // Reset to first page
+		tableCurrentPage = 1;
 		console.log('Page size changed to:', size);
 	}
 
@@ -135,26 +142,44 @@
 	}
 
     function validateForm() {
-        errors = {
-            username: "",
-            accountType: "",
-            techStack: ""
-        };
-        let valid = true;
+        errors.username = "";
+        errors.accountType = "";
+        errors.techStack = "";
         if (!form.username.trim()) {
             errors.username = "Username is required";
-            valid = false;
         }
         if (!form.accountType) {
-            errors.accountType = "Account type is required";
-            valid = false;
+            errors.accountType = "Please select an account type";
         }
         if (form.techStack.length === 0) {
-            errors.techStack = "Tech stack is required";
-            valid = false;
+            errors.techStack = "Please select a tech stack";
         }
-        return valid;
+        if (!errors.username) {
+            validateUsername();
+        }
+        return (
+            !errors.username &&
+            !errors.accountType &&
+            !errors.techStack
+        );
     }
+
+    function validateUsername() {
+        if (!form.username.trim()) {
+            return;
+        }
+        errors.username = tableData.some(
+            account =>
+                account.name.toLowerCase() ===
+                form.username.trim().toLowerCase()
+        )
+            ? "Username already exists."
+            : "";
+    }
+
+    $effect(() => {
+        validateUsername();
+    })
 </script>
 
 <main class="test-page">
@@ -173,22 +198,19 @@
                         err={errors.username}
                     />
                     <Input 
+                        label="Account"
                         type="select"
                         bind:value={form.accountType}
                         options={typeOptions}
                         err={errors.accountType}
                     />
                     <Input 
-                        type="multi"
+                        label="Tech Stack"
+                        type="select"
                         bind:value={form.techStack}
                         options={techOptions}
                         err={errors.techStack}
                     />
-                    <Button
-                        variant={selectedVariant}
-                        outline={isOutline}
-                        type="submit"
-                    > Submit Form </Button>
                 {/snippet}
             </Forms>
         </div>
@@ -230,6 +252,7 @@
                 size="lg"
                 rounded="md"
                 onClick={handleFormSubmit}
+                disabled={isSubmitDisabled}
             >
                 {#if currentFormState === 'loading'}
                     Processing...
@@ -258,7 +281,7 @@
             <ul>
                 <li><strong>Username:</strong> {form.username}</li>
                 <li><strong>Account Type:</strong> {form.accountType || 'Not selected'}</li>
-                <li><strong>Tech Stack:</strong> {form.techStack.length > 0 ? form.techStack.join(', ') : 'Not selected'}</li>
+                <li><strong>Tech Stack:</strong> {form.techStack.length ? form.techStack : 'Not selected'}</li>
                 <li><strong>Account State:</strong> {selectedVariant}</li>
             </ul>
             <p>Choose "Confirm" to have the ability to use the platform!</p>
@@ -395,5 +418,9 @@
         border-radius: 6px;
         font-size: 13px;
         color: #475569;
+    }
+    button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
     }
 </style>

@@ -31,16 +31,16 @@
 		size = 'md',
         err = ''
 	}: Options = $props();
-	let error = $state('');
+	let localError = $state('');
 	const inputId = crypto.randomUUID();
     const isDisabled = $derived(inputState === 'disabled' || inputState === 'loading');
 	const validate = (val: string | string[]) => {
         const isEmpty = Array.isArray(val) ? val.length === 0 : val.trim().length === 0;
 		if (required && isEmpty) {
-			error = 'Cannot be empty!';
+			localError = 'Cannot be empty!';
 			return false;
 		}
-		error = '';
+		localError = '';
 		return true;
 	};
 	const handleInput = (event: Event) => {
@@ -83,6 +83,7 @@
                 </select>
             {:else if type === 'multi'}
                 <select id={inputId} multiple value={value as string[]} onchange={handleInput} disabled={isDisabled}>
+                    <option value="" disabled>{placeholder || 'Select an option'}</option>
                     {#each options as option}
                         <option value={option.value}>{option.label}</option>
                     {/each}
@@ -110,9 +111,9 @@
         </div>
     </div>
 
-    {#if error}
+    {#if localError || err}
         <p class:error-row={labelPlacement === 'row'} class="error-text">
-            {error}
+            {localError || err}
         </p>
     {/if}
 </div>
