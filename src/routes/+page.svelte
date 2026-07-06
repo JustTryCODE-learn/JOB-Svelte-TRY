@@ -1,20 +1,31 @@
 <script lang="ts">
+	import { getUsers, type ApiUser } from '$lib/api';
 	import Input from '$lib/Input.svelte';
 	import Button from '$lib/Button.svelte';
 	import Modal from '$lib/Modal.svelte';
 	import Table from '$lib/Table.svelte';
     import Forms from '$lib/Forms.svelte';
+	import {
+		createEmptyAccountErrors,
+		hasValidationErrors,
+		validateAccountForm,
+		type AccountFormErrors,
+		type AccountFormValues
+	} from '$lib/validation';
 
-	let form = $state({
+	type PageData = {
+		ssrUsers: ApiUser[];
+		ssrError: string;
+	};
+
+	let { data }: { data: PageData } = $props();
+
+	let form = $state<AccountFormValues>({
         username: "",
         accountType: "",
         techStack: ""
     });
-    let errors = $state({
-        username: "",
-        accountType: "",
-        techStack: ""
-    });
+    let errors = $state<AccountFormErrors>(createEmptyAccountErrors());
 
 	type ButtonVariant =
         | 'primary'
@@ -27,6 +38,7 @@
         | 'light'
         | 'dark'
         | 'transparent';
+        
     let selectedVariant = $state<ButtonVariant>('primary');
 	let isOutline = $state(false);
 	let currentFormState = $state<'default' | 'loading' | 'disabled'>('default');
@@ -36,6 +48,9 @@
 	let tableCurrentPage = $state(1);
 	let tablePageSize = $state(10);
 	let tableSelectedIds = $state<string[]>([]);
+	let csrUsers = $state<ApiUser[]>([]);
+	let csrError = $state('');
+	let isCsrLoading = $state(false);
 	
 	const tableColumns = [
 		{ key: 'name', label: 'Username', width: '200px' },
@@ -44,12 +59,22 @@
         { key: 'accountState', label: 'Account State', width: '150px' }
 	];
 
+	const userColumns = [
+		{ key: 'name', label: 'Name', width: '180px' },
+		{ key: 'email', label: 'Email', width: '240px' },
+		{ key: 'phone', label: 'Phone', width: '180px' },
+		{ key: 'website', label: 'Website', width: '160px' }
+	];
+
 	let tableData = $state<Array<{ id: string; name: string; accountType: string; techStack: string; accountState: string }>>([]);
 
 	let paginatedTableData = $derived(tableData.slice(
 		(tableCurrentPage - 1) * tablePageSize,
 		tableCurrentPage * tablePageSize
 	));
+
+	let ssrUserRows = $derived(data.ssrUsers.map(toUserRow));
+	let csrUserRows = $derived(csrUsers.map(toUserRow));
 
     let selectedUsernames = $derived(tableData.filter(row => tableSelectedIds.includes(row.id)).map(row => row.name));
 	
@@ -67,10 +92,10 @@
 	];
 
     const isSubmitDisabled = $derived(
-        errors.username !== "" ||
+        hasValidationErrors(errors) ||
         !form.username.trim() ||
         !form.accountType ||
-        form.techStack.length === 0
+        !form.techStack
     );
 
 	function handleFormSubmit() {
@@ -95,11 +120,7 @@
             accountType: "",
             techStack: ""
         };
-        errors = {
-            username: "",
-            accountType: "",
-            techStack: ""
-        };
+        errors = createEmptyAccountErrors();
         if (pendingAccount) {
             tableData = [...tableData, pendingAccount];
             pendingAccount = null;
@@ -142,40 +163,38 @@
 	}
 
     function validateForm() {
-        errors.username = "";
-        errors.accountType = "";
-        errors.techStack = "";
-        if (!form.username.trim()) {
-            errors.username = "Username is required";
-        }
-        if (!form.accountType) {
-            errors.accountType = "Please select an account type";
-        }
-        if (form.techStack.length === 0) {
-            errors.techStack = "Please select a tech stack";
-        }
-        if (!errors.username) {
-            validateUsername();
-        }
-        return (
-            !errors.username &&
-            !errors.accountType &&
-            !errors.techStack
-        );
+        errors = validateAccountForm(form, tableData);
+        return !hasValidationErrors(errors);
     }
 
     function validateUsername() {
-        if (!form.username.trim()) {
-            return;
-        }
-        errors.username = tableData.some(
-            account =>
-                account.name.toLowerCase() ===
-                form.username.trim().toLowerCase()
-        )
-            ? "Username already exists."
-            : "";
+        const nextErrors = validateAccountForm(form, tableData);
+        errors.username = nextErrors.username;
     }
+
+	function toUserRow(user: ApiUser) {
+		return {
+			id: String(user.id),
+			name: user.name,
+			email: user.email,
+			phone: user.phone,
+			website: user.website
+		};
+	}
+
+	async function loadUsersOnClient() {
+		isCsrLoading = true;
+		csrError = '';
+
+		try {
+			csrUsers = await getUsers();
+		} catch (error) {
+			csrUsers = [];
+			csrError = error instanceof Error ? error.message : 'Unable to load users from the API';
+		} finally {
+			isCsrLoading = false;
+		}
+	}
 
     $effect(() => {
         validateUsername();
@@ -281,7 +300,7 @@
             <ul>
                 <li><strong>Username:</strong> {form.username}</li>
                 <li><strong>Account Type:</strong> {form.accountType || 'Not selected'}</li>
-                <li><strong>Tech Stack:</strong> {form.techStack.length ? form.techStack : 'Not selected'}</li>
+                <li><strong>Tech Stack:</strong> {form.techStack || 'Not selected'}</li>
                 <li><strong>Account State:</strong> {selectedVariant}</li>
             </ul>
             <p>Choose "Confirm" to have the ability to use the platform!</p>
@@ -306,6 +325,45 @@
         <div class="table-info" style="margin-top: 16px;">
             <strong>Selected Username(s):</strong> {selectedUsernames.length > 0 ? selectedUsernames.join(', ') : 'None'}
         </div>
+    </div>
+
+    <div class="card table-section">
+        <h3>5. SSR API Integration</h3>
+        {#if data.ssrError}
+            <p class="error-message">{data.ssrError}</p>
+        {:else}
+            <Table
+                columns={userColumns}
+                data={ssrUserRows}
+                totalItems={ssrUserRows.length}
+                pageSize={ssrUserRows.length || 10}
+            />
+        {/if}
+    </div>
+
+    <div class="card table-section">
+        <h3>6. CSR API Integration</h3>
+        <div class="api-actions">
+            <Button
+                type="button"
+                variant="info"
+                inputState={isCsrLoading ? 'loading' : 'default'}
+                onClick={loadUsersOnClient}
+            >
+                {isCsrLoading ? 'Loading users...' : 'Load users in browser'}
+            </Button>
+        </div>
+
+        {#if csrError}
+            <p class="error-message">{csrError}</p>
+        {:else}
+            <Table
+                columns={userColumns}
+                data={csrUserRows}
+                totalItems={csrUserRows.length}
+                pageSize={csrUserRows.length || 10}
+            />
+        {/if}
     </div>
 </main>
 
@@ -419,8 +477,17 @@
         font-size: 13px;
         color: #475569;
     }
-    button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
+    .api-actions {
+        display: flex;
+        justify-content: flex-start;
+        margin-bottom: 16px;
+    }
+    .error-message {
+        color: #dc2626;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 0;
     }
 </style>

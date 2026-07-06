@@ -75,14 +75,29 @@
             {/if}
 
             {#if type === 'select'}
-                <select id={inputId} value={value as string} onchange={handleInput} disabled={isDisabled}>
+                <select
+                    id={inputId}
+                    value={value as string}
+                    onchange={handleInput}
+                    disabled={isDisabled}
+                    aria-invalid={Boolean(localError || err)}
+                    class:error={Boolean(localError || err)}
+                >
                     <option value="" disabled>{placeholder || 'Select an option'}</option>
                     {#each options as option}
                         <option value={option.value}>{option.label}</option>
                     {/each}
                 </select>
             {:else if type === 'multi'}
-                <select id={inputId} multiple value={value as string[]} onchange={handleInput} disabled={isDisabled}>
+                <select
+                    id={inputId}
+                    multiple
+                    value={value as string[]}
+                    onchange={handleInput}
+                    disabled={isDisabled}
+                    aria-invalid={Boolean(localError || err)}
+                    class:error={Boolean(localError || err)}
+                >
                     <option value="" disabled>{placeholder || 'Select an option'}</option>
                     {#each options as option}
                         <option value={option.value}>{option.label}</option>
@@ -97,6 +112,8 @@
                     {placeholder}
                     disabled={isDisabled}
                     readonly={inputState === 'readonly'}
+                    aria-invalid={Boolean(localError || err)}
+                    class:error={Boolean(localError || err)}
                     class:start-icon-padding={icon && iconPlacement === 'start'}
                     class:end-icon-padding={icon && iconPlacement === 'end'}
                 />
@@ -179,6 +196,12 @@
     input:focus, select:focus {
         outline: none;
         border-color: #3b82f6;
+    }
+
+    input.error,
+    select.error {
+        border-color: #ef4444;
+        background-color: #fef2f2;
     }
 
     select[multiple] {
