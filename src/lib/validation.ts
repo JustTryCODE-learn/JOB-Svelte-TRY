@@ -4,7 +4,11 @@ export type AccountFormValues = {
 	techStack: string;
 };
 
-export type AccountFormErrors = Record<keyof AccountFormValues, string>;
+export type AccountFormErrors = {
+	username: string;
+	accountType: string;
+	techStack: string;
+};
 
 type ExistingAccount = {
 	name: string;
@@ -27,8 +31,14 @@ export function validateAccountForm(
 
 	if (!username) {
 		errors.username = 'Username is required';
-	} else if (existingAccounts.some((account) => account.name.toLowerCase() === username.toLowerCase())) {
-		errors.username = 'Username already exists.';
+	} else {
+		const usernameAlreadyExists = existingAccounts.some((account) => {
+			return account.name.toLowerCase() === username.toLowerCase();
+		});
+
+		if (usernameAlreadyExists) {
+			errors.username = 'Username already exists.';
+		}
 	}
 
 	if (!form.accountType) {
@@ -43,5 +53,9 @@ export function validateAccountForm(
 }
 
 export function hasValidationErrors(errors: AccountFormErrors) {
-	return Object.values(errors).some(Boolean);
+	if (errors.username) return true;
+	if (errors.accountType) return true;
+	if (errors.techStack) return true;
+
+	return false;
 }
