@@ -1,377 +1,241 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { createPost, deletePost, getPosts, updatePost, type Post } from '$lib/api';
+	import { createPost, deletePost, getPosts, updatePost } from '$lib/api';
 	import Button from '$lib/Button.svelte';
 	import Forms from '$lib/Forms.svelte';
 	import Input from '$lib/Input.svelte';
 	import Table from '$lib/Table.svelte';
 
-	type PageData = {
-		posts: Post[];
-		total: number;
-		error: string;
-	};
-
-	let { data }: { data: PageData } = $props();
-
-	let localPosts = $state<Post[] | null>(null);
-	let selectedPostId = $state<number | null>(null);
-	let form = $state({
-		title: '',
-		body: '',
-		userId: '1'
-	});
-	let errors = $state({
-		title: '',
-		body: '',
-		userId: ''
-	});
-	let localApiMessage = $state('');
-	let isLoading = $state(false);
-	let isLoadingPosts = $state(false);
+	let posts = $state<any[]>([]);
+	let editingId = $state<number | null>(null);
+	let title = $state('');
+	let body = $state('');
+	let userId = $state('1');
+	let titleErr = $state('');
+	let bodyErr = $state('');
+	let userIdErr = $state('');
+	let message = $state('');
+	let loading = $state(false);
 
 	const columns = [
-		{ key: 'title', label: 'Title', width: '260px' },
-		{ key: 'body', label: 'Body', width: '420px' },
-		{ key: 'userId', label: 'User ID', width: '100px' }
+		{ key: 'title', label: 'Title', width: '200px' },
+		{ key: 'body', label: 'Body', width: '350px' },
+		{ key: 'userId', label: 'User ID', width: '80px' }
 	];
 
-	function getPostsList() {
-		if (localPosts) {
-			return localPosts;
-		}
-
-		return data.posts;
+	function getTableData() {
+		return posts.map((p) => ({
+			id: String(p.id),
+			title: p.title,
+			body: p.body,
+			userId: p.userId
+		}));
 	}
 
-	function getApiMessage() {
-		if (localApiMessage) {
-			return localApiMessage;
-		}
-
-		return data.error;
-	}
-
-	function getTableRows() {
-		const posts = getPostsList();
-
-		return posts.map((post) => {
-			return {
-				id: String(post.id),
-				title: post.title,
-				body: post.body,
-				userId: post.userId
-			};
-		});
-	}
-
-	async function loadPosts() {
-		isLoadingPosts = true;
-		localApiMessage = 'Loading posts from DummyJSON...';
-
+	async function reloadPosts() {
+		loading = true;
+		message = 'loading...';
 		try {
 			const result = await getPosts(10);
-			localPosts = result.posts;
-			localApiMessage = '';
-		} catch {
-			localPosts = [];
-			localApiMessage = 'Failed to fetch posts. Please check your internet connection and try again.';
-		} finally {
-			isLoadingPosts = false;
+			posts = result.posts;
+			message = '';
+		} catch (e) {
+			posts = [];
+			message = 'load failed';
+			console.log(e);
 		}
+		loading = false;
 	}
 
-	function validatePostForm() {
-		errors = {
-			title: '',
-			body: '',
-			userId: ''
-		};
+	function checkForm() {
+		titleErr = '';
+		bodyErr = '';
+		userIdErr = '';
 
-		if (!form.title.trim()) {
-			errors.title = 'Title is required';
-		}
+		if (!title.trim()) titleErr = 'title required';
+		if (!body.trim()) bodyErr = 'body required';
+		if (!userId || isNaN(Number(userId))) userIdErr = 'user id must be number';
 
-		if (!form.body.trim()) {
-			errors.body = 'Body is required';
-		}
-
-		if (!Number(form.userId)) {
-			errors.userId = 'User ID must be a number';
-		}
-
-		return !errors.title && !errors.body && !errors.userId;
+		return !titleErr && !bodyErr && !userIdErr;
 	}
 
-	function resetForm() {
-		selectedPostId = null;
-		form = {
-			title: '',
-			body: '',
-			userId: '1'
-		};
-		errors = {
-			title: '',
-			body: '',
-			userId: ''
-		};
+	function clearForm() {
+		editingId = null;
+		title = '';
+		body = '';
+		userId = '1';
+		titleErr = '';
+		bodyErr = '';
+		userIdErr = '';
 	}
 
-	function handleSelectPost(id: string) {
-		const posts = getPostsList();
-		const post = posts.find((item) => item.id === Number(id));
-
+	function pickPost(id: string) {
+		const post = posts.find((p) => p.id === Number(id));
 		if (!post) return;
 
-		selectedPostId = post.id;
-		form = {
-			title: post.title,
-			body: post.body,
-			userId: String(post.userId)
-		};
-		localApiMessage = `Editing post #${post.id}`;
+		editingId = post.id;
+		title = post.title;
+		body = post.body;
+		userId = String(post.userId);
+		message = 'editing post ' + post.id;
 	}
 
-	async function handleSubmitPost() {
-		if (!validatePostForm()) return;
+	async function savePost() {
+		if (!checkForm()) return;
 
-		isLoading = true;
-		localApiMessage = '';
+		loading = true;
+		message = '';
 
 		try {
-			if (selectedPostId) {
-				const updatedPost = await updatePost(selectedPostId, form.title.trim(), form.body.trim());
-				const posts = getPostsList();
-
-				localPosts = posts.map((post) => {
-					if (post.id === selectedPostId) {
-						return {
-							...post,
-							...updatedPost,
-							userId: Number(form.userId)
-						};
+			if (editingId) {
+				const updated = await updatePost(editingId, title.trim(), body.trim());
+				posts = posts.map((p) => {
+					if (p.id === editingId) {
+						return { ...p, ...updated, userId: Number(userId) };
 					}
-
-					return post;
+					return p;
 				});
-				localApiMessage = `Updated post #${selectedPostId}`;
+				message = 'updated post #' + editingId;
 			} else {
-				const newPost = await createPost(form.title.trim(), form.body.trim(), Number(form.userId));
-				const posts = getPostsList();
-
-				localPosts = [newPost, ...posts];
-				localApiMessage = `Created post #${newPost.id}`;
+				const created = await createPost(title.trim(), body.trim(), Number(userId));
+				posts = [created, ...posts];
+				message = 'created post #' + created.id;
 			}
-
-			resetForm();
-		} catch (error) {
-			localApiMessage = error instanceof Error ? error.message : 'Unable to save post';
-		} finally {
-			isLoading = false;
+			clearForm();
+		} catch (e: any) {
+			message = e?.message || 'save failed';
 		}
+
+		loading = false;
 	}
 
-	async function handleDeleteSelected() {
-		if (!selectedPostId) return;
+	async function removePost() {
+		if (!editingId) return;
 
-		isLoading = true;
-		localApiMessage = '';
-
+		loading = true;
 		try {
-			await deletePost(selectedPostId);
-			const posts = getPostsList();
-
-			localPosts = posts.filter((post) => post.id !== selectedPostId);
-			localApiMessage = `Deleted post #${selectedPostId}`;
-			resetForm();
-		} catch (error) {
-			localApiMessage = error instanceof Error ? error.message : 'Unable to delete post';
-		} finally {
-			isLoading = false;
+			await deletePost(editingId);
+			posts = posts.filter((p) => p.id !== editingId);
+			message = 'deleted post #' + editingId;
+			clearForm();
+		} catch (e: any) {
+			message = e?.message || 'delete failed';
 		}
+		loading = false;
 	}
 
 	onMount(() => {
-		loadPosts();
+		reloadPosts();
 	});
 </script>
 
 <svelte:head>
-	<title>Posts CRUD</title>
+	<title>Posts</title>
 </svelte:head>
 
-<main class="posts-page">
-	<header class="page-header">
-		<div>
-			<a href="/" class="back-link">Home</a>
-			<h1>Posts CRUD</h1>
-			<p>DummyJSON API integration for creating, reading, updating, and deleting posts.</p>
-		</div>
-		<a class="docs-link" href="https://dummyjson.com/docs/posts" target="_blank" rel="noreferrer">
-			DummyJSON docs
-		</a>
-	</header>
+<main class="page">
+	<a href="/">← back</a>
+	<h1>Posts CRUD</h1>
+	<p>
+		using dummyjson api -
+		<a href="https://dummyjson.com/docs" target="_blank" rel="noreferrer">docs link</a>
+	</p>
 
-	<section class="content-grid">
-		<div class="panel">
-			<Forms title={selectedPostId ? `Edit post #${selectedPostId}` : 'Create post'} onSubmit={handleSubmitPost}>
+	<div class="layout">
+		<section class="box">
+			<Forms title={editingId ? 'Edit post' : 'Add post'} onSubmit={savePost}>
 				{#snippet children()}
-					<Input label="Title" bind:value={form.title} err={errors.title} />
-					<Input label="Body" bind:value={form.body} err={errors.body} />
-					<Input label="User ID" type="number" bind:value={form.userId} err={errors.userId} />
+					<Input label="Title" bind:value={title} err={titleErr} />
+					<Input label="Body" bind:value={body} err={bodyErr} />
+					<Input label="User ID" type="number" bind:value={userId} err={userIdErr} />
 
-					<div class="form-actions">
-						<Button
-							type="submit"
-							variant="primary"
-							inputState={isLoading ? 'loading' : 'default'}
-						>
-							{isLoading ? 'Saving...' : selectedPostId ? 'Update post' : 'Create post'}
+					<div class="btns">
+						<Button type="submit" variant="primary" inputState={loading ? 'loading' : 'default'}>
+							{editingId ? 'Update' : 'Create'}
 						</Button>
-
-						<Button type="button" variant="surface" onClick={resetForm}>
-							Clear
-						</Button>
-
+						<Button type="button" variant="surface" onClick={clearForm}>Clear</Button>
 						<Button
 							type="button"
 							variant="danger"
-							inputState={!selectedPostId || isLoading ? 'disabled' : 'default'}
-							onClick={handleDeleteSelected}
+							inputState={!editingId || loading ? 'disabled' : 'default'}
+							onClick={removePost}
 						>
-							Delete selected
+							Delete
 						</Button>
 					</div>
 				{/snippet}
 			</Forms>
 
-			{#if getApiMessage()}
-				<p class="api-message">{getApiMessage()}</p>
+			{#if message}
+				<p class="msg">{message}</p>
 			{/if}
-		</div>
+		</section>
 
-		<div class="panel">
-			<h2>Posts</h2>
-			<p class="table-help">Posts are loaded from DummyJSON in the browser.</p>
-			<div class="table-actions">
-				<Button
-					type="button"
-					variant="info"
-					inputState={isLoadingPosts ? 'loading' : 'default'}
-					onClick={loadPosts}
-				>
-					{isLoadingPosts ? 'Loading...' : 'Reload posts'}
-				</Button>
-			</div>
+		<section class="box">
+			<h2>Post list</h2>
+			<Button type="button" variant="info" inputState={loading ? 'loading' : 'default'} onClick={reloadPosts}>
+				Reload
+			</Button>
+
 			<Table
 				columns={columns}
-				data={getTableRows()}
-				totalItems={getTableRows().length}
+				data={getTableData()}
+				totalItems={posts.length}
 				pageSize={10}
 				currentPage={1}
-				selectedIds={selectedPostId ? [String(selectedPostId)] : []}
+				selectedIds={editingId ? [String(editingId)] : []}
 				isChecked={true}
-				onSelectRow={handleSelectPost}
+				onSelectRow={pickPost}
 			/>
-		</div>
-	</section>
+		</section>
+	</div>
 </main>
 
 <style>
-	.posts-page {
-		max-width: 1180px;
-		margin: 40px auto;
-		padding: 0 20px;
-		font-family: system-ui, -apple-system, sans-serif;
-		color: #172033;
-	}
-
-	.page-header {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 16px;
-		margin-bottom: 24px;
-	}
-
-	.back-link,
-	.docs-link {
-		color: #2563eb;
-		font-weight: 600;
-		text-decoration: none;
-	}
-
-	h1,
-	h2 {
-		margin: 0;
+	.page {
+		max-width: 1100px;
+		margin: 30px auto;
+		padding: 0 16px;
+		font-family: system-ui, sans-serif;
 	}
 
 	h1 {
-		margin-top: 8px;
-		font-size: 32px;
-	}
-
-	h2 {
-		margin-bottom: 8px;
-		font-size: 22px;
+		margin: 8px 0;
 	}
 
 	p {
-		margin: 8px 0 0;
-		color: #64748b;
+		color: #666;
 	}
 
-	.content-grid {
-		display: grid;
-		grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
-		gap: 24px;
-		align-items: start;
-	}
-
-	.panel {
-		background: #ffffff;
-		border: 1px solid #d8e0ea;
-		border-radius: 8px;
-		padding: 20px;
-		box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-	}
-
-	.form-actions {
+	.layout {
 		display: flex;
+		gap: 20px;
 		flex-wrap: wrap;
-		gap: 10px;
 	}
 
-	.api-message {
-		margin-top: 16px;
-		padding: 12px;
-		border-radius: 6px;
-		background: #eef6ff;
-		color: #1d4ed8;
-		font-weight: 600;
+	.box {
+		flex: 1;
+		min-width: 280px;
+		border: 1px solid #ddd;
+		border-radius: 8px;
+		padding: 16px;
+		background: #fff;
 	}
 
-	.table-help {
-		margin-bottom: 16px;
+	.btns {
+		display: flex;
+		gap: 8px;
+		flex-wrap: wrap;
 	}
 
-	.table-actions {
-		margin-bottom: 16px;
+	.msg {
+		margin-top: 12px;
+		padding: 8px;
+		background: #f0f7ff;
+		color: #2563eb;
 	}
 
-	@media (max-width: 820px) {
-		.page-header,
-		.content-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.page-header {
-			display: block;
-		}
-
-		.docs-link {
-			display: inline-block;
-			margin-top: 12px;
-		}
+	a {
+		color: #2563eb;
 	}
 </style>

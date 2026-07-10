@@ -1,61 +1,41 @@
-export type AccountFormValues = {
-	username: string;
-	accountType: string;
-	techStack: string;
-};
-
-export type AccountFormErrors = {
-	username: string;
-	accountType: string;
-	techStack: string;
-};
-
-type ExistingAccount = {
-	name: string;
-};
-
-export function createEmptyAccountErrors(): AccountFormErrors {
-	return {
+export function validateAccountForm(
+	form: { username: string; accountType: string; techStack: string },
+	existingAccounts: { name: string }[] = []
+) {
+	const errors = {
 		username: '',
 		accountType: '',
 		techStack: ''
 	};
-}
 
-export function validateAccountForm(
-	form: AccountFormValues,
-	existingAccounts: ExistingAccount[] = []
-): AccountFormErrors {
-	const errors = createEmptyAccountErrors();
-	const username = form.username.trim();
+	const name = form.username.trim();
 
-	if (!username) {
-		errors.username = 'Username is required';
+	if (!name) {
+		errors.username = 'Username cannot be empty';
 	} else {
-		const usernameAlreadyExists = existingAccounts.some((account) => {
-			return account.name.toLowerCase() === username.toLowerCase();
-		});
-
-		if (usernameAlreadyExists) {
-			errors.username = 'Username already exists.';
+		for (let i = 0; i < existingAccounts.length; i++) {
+			const acc = existingAccounts[i];
+			if (acc.name.toLowerCase() === name.toLowerCase()) {
+				errors.username = 'Username already exists';
+				break;
+			}
 		}
 	}
 
 	if (!form.accountType) {
-		errors.accountType = 'Please select an account type';
+		errors.accountType = 'Please pick account type';
 	}
 
 	if (!form.techStack) {
-		errors.techStack = 'Please select a tech stack';
+		errors.techStack = 'Please pick tech stack';
 	}
 
 	return errors;
 }
 
-export function hasValidationErrors(errors: AccountFormErrors) {
+export function formHasErrors(errors: { username: string; accountType: string; techStack: string }) {
 	if (errors.username) return true;
 	if (errors.accountType) return true;
 	if (errors.techStack) return true;
-
 	return false;
 }

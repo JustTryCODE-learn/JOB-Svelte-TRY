@@ -1,81 +1,43 @@
-export type Post = {
-	id: number;
-	title: string;
-	body: string;
-	userId: number;
-	tags?: string[];
-	reactions?: {
-		likes: number;
-		dislikes: number;
-	};
-};
+const BASE_URL = 'https://dummyjson.com';
 
-type PostsResponse = {
-	posts: Post[];
-	total: number;
-	skip: number;
-	limit: number;
-};
-
-const API_BASE_URL = 'https://dummyjson.com';
-
-export async function getPosts(limit = 10, fetchFn: typeof fetch = fetch): Promise<PostsResponse> {
-	const response = await fetchFn(`${API_BASE_URL}/posts?limit=${limit}`);
-
-	if (!response.ok) {
-		throw new Error('Unable to load posts from DummyJSON');
+export async function getPosts(limit = 10) {
+	const res = await fetch(`${BASE_URL}/posts?limit=${limit}`);
+	if (!res.ok) {
+		throw new Error('cannot load posts');
 	}
-
-	const data = await response.json();
-	return data;
+	return res.json();
 }
 
-export async function createPost(title: string, body: string, userId: number, fetchFn: typeof fetch = fetch) {
-	const response = await fetchFn(`${API_BASE_URL}/posts/add`, {
+export async function createPost(title: string, body: string, userId: number) {
+	const res = await fetch(`${BASE_URL}/posts/add`, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			title,
-			body,
-			userId
-		})
+		body: JSON.stringify({ title, body, userId })
 	});
-
-	if (!response.ok) {
-		throw new Error('Unable to create post');
+	if (!res.ok) {
+		throw new Error('cannot create post');
 	}
-
-	const data: Post = await response.json();
-	return data;
+	return res.json();
 }
 
-export async function updatePost(id: number, title: string, body: string, fetchFn: typeof fetch = fetch) {
-	const response = await fetchFn(`${API_BASE_URL}/posts/${id}`, {
+export async function updatePost(id: number, title: string, body: string) {
+	const res = await fetch(`${BASE_URL}/posts/${id}`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({
-			title,
-			body
-		})
+		body: JSON.stringify({ title, body })
 	});
-
-	if (!response.ok) {
-		throw new Error('Unable to update post');
+	if (!res.ok) {
+		throw new Error('cannot update post');
 	}
-
-	const data: Post = await response.json();
-	return data;
+	return res.json();
 }
 
-export async function deletePost(id: number, fetchFn: typeof fetch = fetch) {
-	const response = await fetchFn(`${API_BASE_URL}/posts/${id}`, {
+export async function deletePost(id: number) {
+	const res = await fetch(`${BASE_URL}/posts/${id}`, {
 		method: 'DELETE'
 	});
-
-	if (!response.ok) {
-		throw new Error('Unable to delete post');
+	if (!res.ok) {
+		throw new Error('cannot delete post');
 	}
-
-	const data = await response.json();
-	return data;
+	return res.json();
 }

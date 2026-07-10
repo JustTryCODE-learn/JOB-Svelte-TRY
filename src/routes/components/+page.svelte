@@ -4,20 +4,18 @@
 	import Modal from '$lib/Modal.svelte';
 	import Table from '$lib/Table.svelte';
     import Forms from '$lib/Forms.svelte';
-	import {
-		createEmptyAccountErrors,
-		hasValidationErrors,
-		validateAccountForm,
-		type AccountFormErrors,
-		type AccountFormValues
-	} from '$lib/validation';
+	import { formHasErrors, validateAccountForm } from '$lib/validation';
 
-	let form = $state<AccountFormValues>({
+	let form = $state({
         username: "",
         accountType: "",
         techStack: ""
     });
-    let errors = $state<AccountFormErrors>(createEmptyAccountErrors());
+    let errors = $state({
+        username: "",
+        accountType: "",
+        techStack: ""
+    });
 
 	type ButtonVariant =
         | 'primary'
@@ -71,7 +69,7 @@
 	];
 
     const isSubmitDisabled = $derived(
-        hasValidationErrors(errors) ||
+        formHasErrors(errors) ||
         !form.username.trim() ||
         !form.accountType ||
         !form.techStack
@@ -99,12 +97,12 @@
             accountType: "",
             techStack: ""
         };
-        errors = createEmptyAccountErrors();
+        errors = { username: '', accountType: '', techStack: '' };
         if (pendingAccount) {
             tableData = [...tableData, pendingAccount];
+            console.log('added account:', pendingAccount);
             pendingAccount = null;
         }
-		console.log('Modal confirmed:', pendingAccount);
 	}
 
 	function handleModalCancel() {
@@ -143,7 +141,7 @@
 
     function validateForm() {
         errors = validateAccountForm(form, tableData);
-        return !hasValidationErrors(errors);
+        return !formHasErrors(errors);
     }
 
     function validateUsername() {
@@ -157,9 +155,9 @@
 </script>
 
 <main class="test-page">
-    <a class="back-link" href="/">Home</a>
-    <h2>🧪 DEMO / Test Component: Input-Button-Modal-Table</h2>
-    <p class="subtitle">This is a demo of the Input and Button and Modal and Table components working interactively.</p>
+    <a class="back-link" href="/">← back</a>
+    <h2>Components demo</h2>
+    <p class="subtitle">test input, button, modal, table + form validation</p>
 
     <div class="demo-layout">
     
